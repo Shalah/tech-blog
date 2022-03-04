@@ -1,13 +1,18 @@
-// Adding dependencies
+// These are dependencies
+
+const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const routes = require('./controllers');
-
-const sequelize = require('./config/connection');
-const SequelizeStore = require('connect-session-sequelize')(session.Store); // this is used for Login sessions
+const exphbs = require('express-handlebars');
+const helpers = require('./utils/helpers');
 
 const app = express();
+
+// This is the port to use for browsers
 const PORT = process.env.PORT || 3001;
+
+const sequelize = require('./config/config');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
 
 const sess = {
   secret: 'Super secret secret',
@@ -15,21 +20,27 @@ const sess = {
   resave: false,
   saveUninitialized: true,
   store: new SequelizeStore({
-    db: sequelize 
-  }) 
+    db: sequelize
+  })
 };
 
+// This is for the logging session
 app.use(session(sess));
 
-app.use(express.json());  // Server set up for json
-app.use(express.urlencoded({ extended: true }));
+// These are used for handlebards
+const hbs = exphbs.create({ helpers });
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
 
-app.use(routes);
+// These are the middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  res.status(200)
-})
+app.use(require('./controllers/'));
 
-sequelize.sync({ force: false }).then(() => {
-  app.listen(PORT, () => console.log('Now listening'));
+// This listen for event as well as event done in sql 
+app.listen(PORT, () => {
+  console.log(`App listening on port ${PORT}!`);
+  sequelize.sync({ force: false });
 });
